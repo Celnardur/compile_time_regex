@@ -48,7 +48,7 @@ impl NFA {
 }    
 
 #[derive(Copy, Clone)]
-enum RegexToken {
+pub enum RegexToken {
     Character(u8),
     Alternation,
     KleenClosure,
@@ -65,7 +65,7 @@ enum RegexToken {
 /// So were left with a tokenized regex that only has alternation, concatenation, Kleen closure
 /// ('*') and groupings. 
 /// This only supports ascii. 
-fn scan_regex(regex: &[u8]) -> Result<Vec<RegexToken>, Error> {
+pub fn scan_regex(regex: &[u8]) -> Result<Vec<RegexToken>, Error> {
     let mut tokens = Vec::new();
     let mut index = 0;
     while index < regex.len() {
@@ -85,11 +85,48 @@ fn scan_regex(regex: &[u8]) -> Result<Vec<RegexToken>, Error> {
                 index += offset;
             },
             ']' => return Err(Error::new("Mismatched []")),
+            '?' => {
+                let insert_spot = tokens.len() - get_previous_group(&tokens[..])?.len();
+                tokens.insert(insert_spot, RegexToken::LParen);
+                tokens.push(RegexToken::Alternation);
+                tokens.push(RegexToken::Character(0));
+                tokens.push(RegexToken::RParen);
+            },
+            '+' => {
+                let mut group = get_previous_group(&tokens[..])?.iter().cloned().collect();
+                tokens.append(&mut group);
+                tokens.push(RegexToken::KleenClosure);
+            },
             _ => tokens.push(RegexToken::Character(regex[index])),
         }
         index += 1;
     }
     Ok(tokens)
+}
+
+/// looks backward from end to get the tokens from the previous group
+fn get_previous_group(regex: &[RegexToken]) -> Result<&[RegexToken], Error> {
+    match regex[regex.len() -1] {
+        RegexToken::Character(c) => return Ok(&regex[(regex.len()-1)..regex.len()]),
+        RegexToken::RParen => (),
+        _ => return Err(Error::new("Cant use an operator on a non group")),
+    }
+
+    let mut depth = 1;
+    let mut index = regex.len() - 2;
+    while index >= 0 {
+        let token = regex[index];
+        match token {
+            RegexToken::RParen => depth += 1,
+            RegexToken::LParen => depth -= 1,
+            _ => (),
+        }
+        if depth == 0 {
+            return Ok(&regex[index..]);
+        }
+        index -= 1;
+    }
+    Err(Error::new("+ or ? used on group with no matching parens"))
 }
 
 /// This takes a slice that starts one after a [ and goes to the end of the regex

@@ -19,6 +19,10 @@ impl Error {
             message: String::from(message),
         }
     }
+
+    pub fn message(&self) -> &str {
+        self.message()
+    }
 }
 
 impl std::fmt::Display for Error {

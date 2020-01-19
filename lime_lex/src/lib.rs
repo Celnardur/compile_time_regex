@@ -1,5 +1,6 @@
 pub mod nfa;
 pub use nfa::NFA;
+pub mod regex;
 
 
 #[derive(Debug)]

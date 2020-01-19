@@ -1,5 +1,5 @@
 pub mod nfa;
-pub use nfa::NFA;
+//pub use nfa::NFA;
 pub mod regex;
 
 

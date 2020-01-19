@@ -50,11 +50,15 @@ impl NFA {
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum RegexToken {
     Character(u8),
+    MinMax(u8, u8),
     Alternation,
     KleenClosure,
+    Epsilon,
     LParen,
     RParen,
 }
+
+use RegexToken::*;
 
 /// This is basically a "hand-made" regex scanner
 /// This takes complex regex, simplifies the rules '?', '+', and '[]', and tokenizes it.
@@ -66,6 +70,10 @@ pub enum RegexToken {
 /// ('*') and groupings. 
 /// This only supports ascii. 
 pub fn scan_regex(regex: &str) -> Result<Vec<RegexToken>, Error> {
+    if !regex.is_ascii() {
+        return Err(Error::new("This Regex Engine only supports ASCII"));
+    }
+
     let regex = regex.as_bytes();
     if regex.len() == 0 {
         return Err(Error::new("Cannot have an empty regex"));
@@ -80,12 +88,12 @@ pub fn scan_regex(regex: &str) -> Result<Vec<RegexToken>, Error> {
                 if index >= regex.len() {
                     return Err(Error::new("'\\' can't be last character in regex"));
                 }
-                tokens.push(RegexToken::Character(regex[index]));
+                tokens.push(RegexToken::Character(get_escape_char(regex[index])));
             }, 
-            '|' => tokens.push(RegexToken::Alternation),
-            '*' => tokens.push(RegexToken::KleenClosure),
-            '(' => tokens.push(RegexToken::LParen),
-            ')' => tokens.push(RegexToken::RParen),
+            '|' => tokens.push(Alternation),
+            '*' => tokens.push(KleenClosure),
+            '(' => tokens.push(LParen),
+            ')' => tokens.push(RParen),
             '[' => {
                 let (mut group, offset) = scan_set(&regex[(index + 1)..])?;
                 tokens.append(&mut group);
@@ -95,20 +103,94 @@ pub fn scan_regex(regex: &str) -> Result<Vec<RegexToken>, Error> {
             '?' => {
                 let insert_spot = tokens.len() - get_previous_group(&tokens[..])?.len();
                 tokens.insert(insert_spot, RegexToken::LParen);
-                tokens.push(RegexToken::Alternation);
-                tokens.push(RegexToken::Character(0));
-                tokens.push(RegexToken::RParen);
+                tokens.push(Alternation);
+                tokens.push(Epsilon);
+                tokens.push(RParen);
             },
             '+' => {
                 let mut group = get_previous_group(&tokens[..])?.iter().cloned().collect();
                 tokens.append(&mut group);
-                tokens.push(RegexToken::KleenClosure);
+                tokens.push(KleenClosure);
             },
-            _ => tokens.push(RegexToken::Character(regex[index])),
+            '.' => {
+                let mut dot = scan_regex(r"[\0-~]")?;
+                tokens.append(&mut dot);
+            }
+            '{' => {
+                let mut at = index + 1;
+                while regex[index] != '}' as u8 {
+                    if index + 1 >= regex.len() {
+                        return Err(Error::new("Mismatched {}"));
+                    }
+                    index += 1;
+                }
+                index += 1;
+                let (start, len) = get_next_num(&regex[at..])?;
+                at += len as usize;
+                let group: Vec<RegexToken> = get_previous_group(&tokens[..])?.iter().cloned().collect();
+                match regex[at] as char {
+                    '}' => {
+                        if start < 2 {
+                            return Err(Error::new("Variable in bracket makes no sense"));
+                        }
+                        for _ in 1..start {
+                            tokens.append(&mut group.clone());
+                        }
+                    },
+                    ',' => {
+                        at += 1;
+                        let (end, len) = get_next_num(&regex[at..])?;
+                        at += len as usize;
+                        if regex[at] != '}' as u8 {
+                            return Err(Error::new("Illegal patern in {}"));
+                        }
+                        tokens.push(MinMax(start, end));
+                    },
+                    _ => return Err(Error::new("{} Pattern is not upheld"))
+                }
+
+            }
+            _ => tokens.push(Character(regex[index])),
         }
         index += 1;
     }
     Ok(tokens)
+}
+
+fn get_next_num(regex: &[u8]) -> Result<(u8, u8), Error> {
+    let mut digits = Vec::new();
+    if regex.is_empty() || regex[0] < 0x30 || regex[0] > 0x39 {
+        return Err(Error::new("Bracket contains non number in illeagal spot"));
+    }
+    let mut index = 0;
+    while regex[index] >= 0x30 && regex[index] <= 0x39 {
+        digits.push(regex[index] & 0x0f);
+        index += 1;
+    }
+    if digits.len() > 3 {
+        return Err(Error::new("Cannoth have {} be greater than 255 sorry"));
+    }
+    let mut acc: u16 = 0;
+    let mut mult = 1;
+    for digit in digits.iter().rev() {
+        acc += (digit * mult) as u16;
+        mult *= 10;
+    }
+    if acc > 255 {
+        return Err(Error::new("Cannoth have {} be greater than 255 sorry"));
+    }
+    Ok((acc as u8, digits.len() as u8))
+}
+
+
+fn get_escape_char(letter: u8) -> u8 {
+    match letter {
+        48 => 0,
+        114 => 13,
+        110 => 10,
+        116 => 9,
+        _ => letter,
+    }
 }
 
 /// looks backward from end to get the tokens from the previous group
@@ -118,8 +200,8 @@ fn get_previous_group(regex: &[RegexToken]) -> Result<&[RegexToken], Error> {
     }
 
     match regex[regex.len() -1] {
-        RegexToken::Character(c) => return Ok(&regex[(regex.len()-1)..regex.len()]),
-        RegexToken::RParen => (),
+        Character(c) => return Ok(&regex[(regex.len()-1)..regex.len()]),
+        RParen => (),
         _ => return Err(Error::new("Cant use an operator on a non group")),
     }
 
@@ -130,8 +212,8 @@ fn get_previous_group(regex: &[RegexToken]) -> Result<&[RegexToken], Error> {
 
         let token = regex[index];
         match token {
-            RegexToken::RParen => depth += 1,
-            RegexToken::LParen => depth -= 1,
+            RParen => depth += 1,
+            LParen => depth -= 1,
             _ => (),
         }
         if depth == 0 {
@@ -158,16 +240,25 @@ fn scan_set(regex: &[u8]) -> Result<(Vec<RegexToken>, usize), Error> {
     // get a set of characters represented in the set
     let mut set = HashSet::new();
     while index < regex.len() && regex[index] as char != ']' {
+        let mut from = regex[index];
         if index + 1 < regex.len() && regex[index] as char == '\\' { 
-            set.insert(regex[index+1]);
-            index +=2;
-        } else if index + 2 < regex.len() && regex[index+1] as char == '-' {
-            for c in regex[index]..(regex[index+2]+1) {
+            from = get_escape_char(regex[index+1]);
+            index +=1;
+        } 
+        
+        if index + 2 < regex.len() && regex[index+1] as char == '-' {
+            let mut to = regex[index+2];
+            if index + 3 < regex.len() && to as char == '\\' { 
+                to = get_escape_char(regex[index+3]);
+                index +=1;
+            } 
+
+            for c in from..(to+1) {
                 set.insert(c);
             }
             index += 3;
         } else {
-            set.insert(regex[index]);
+            set.insert(from);
             index += 1;
         }
     }
@@ -179,7 +270,7 @@ fn scan_set(regex: &[u8]) -> Result<(Vec<RegexToken>, usize), Error> {
     if is_not {
         let mut new_set = HashSet::new();
         // sorry ascii only
-        for i in 32..127 {
+        for i in 0..127 {
             if !set.contains(&i) {
                 new_set.insert(i);
             }
@@ -194,13 +285,13 @@ fn scan_set(regex: &[u8]) -> Result<(Vec<RegexToken>, usize), Error> {
     }
 
     // create alternation of set
-    tokens.push(RegexToken::LParen);
+    tokens.push(LParen);
     for byte in set {
-        tokens.push(RegexToken::Character(byte));
-        tokens.push(RegexToken::Alternation);
+        tokens.push(Character(byte));
+        tokens.push(Alternation);
     }
     tokens.pop();
-    tokens.push(RegexToken::RParen);
+    tokens.push(RParen);
     
     Ok((tokens, index+1))
 }
@@ -267,7 +358,7 @@ mod test {
     #[test]
     fn scan_test_inverse_set() -> Result<(), Error> {
         // test inverse set
-        let regex = r"[^ -`d-~]";
+        let regex = r"[^\0-`d-~]";
         let tokens = scan_regex(regex)?;
         assert_eq!(tokens.len(), 7);
         assert_eq!(tokens[0], LParen);
@@ -286,14 +377,14 @@ mod test {
         // basic ?
         let regex = r"a?";
         let tokens = scan_regex(regex)?;
-        assert_eq!(tokens, [LParen, Character('a' as u8), Alternation, Character(0), RParen]);
+        assert_eq!(tokens, [LParen, Character('a' as u8), Alternation, Epsilon, RParen]);
 
         // ? on group
         let regex = r"foo(ab)?asdf";
         let tokens = scan_regex(regex)?;
         assert_eq!(tokens, [Character('f' as u8), Character('o' as u8), Character('o' as u8), LParen, 
                    LParen, Character('a' as u8), Character('b' as u8), RParen,
-                   Alternation, Character(0), RParen, 
+                   Alternation, Epsilon, RParen, 
                    Character('a' as u8), Character('s' as u8), Character('d' as u8), Character('f' as u8),
         ]);
 
@@ -330,6 +421,21 @@ mod test {
         let regex = r"f((a|b)(c|d))+a";
         let tokens = scan_regex(regex)?;
         assert_eq!(tokens.len(), 27);
+
+        Ok(())
+    }
+
+    #[test]
+    fn scan_test_bracket() -> Result<(), Error> {
+        let regex = r"a{3}";
+        let tokens = scan_regex(regex)?;
+        assert_eq!(tokens.len(), 3);
+        assert_eq!(tokens, [Character('a' as u8), Character('a' as u8), Character('a' as u8)]);
+
+        let regex = r"a{3,7}";
+        let tokens = scan_regex(regex)?;
+        assert_eq!(tokens.len(), 2);
+        assert_eq!(tokens, [Character('a' as u8), MinMax(3, 7)]);
 
         Ok(())
     }

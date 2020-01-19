@@ -1,6 +1,6 @@
-use lime_lex::NFA;
+use lime_lex::*;
 
 fn main() {
-    let test: &[u8] = "t".as_bytes();
-    println!("{}", test.len());
+    let test = lime_lex::nfa::scan_regex(r"a{4,5}");
+    println!("{:?}", test);
 }

@@ -433,3 +433,88 @@ mod simpilfy {
     }
 }
 
+mod parse {
+    use super::simpilfy::RegexToken;
+    use crate::Error;
+    use std::{rc::Rc, cell::RefCell};
+    use Binary_Operation::*;
+    use Unary_Operation::*;
+
+    type Pointer = Rc<RAST>;
+
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    pub enum Binary_Operation {
+        Concat,
+        Alternation,
+    }
+
+    #[derive(Copy, Clone, Debug, PartialEq)]
+    pub enum Unary_Operation {
+        MinMax(u8, u8),
+        Times(u8),
+        KleenClosure,
+        Question,
+        Plus,
+    }
+
+    #[derive(Clone, Debug, PartialEq)]
+    pub enum RAST {
+        Binary(Pointer, Pointer, Binary_Operation),
+        Unary(Pointer, Unary_Operation),
+        Atomic(u8),
+    }
+    
+    /*
+    pub fn parse(regex: &[RegexToken]) -> Result<RAST, Error> {
+        let mut regex = regex.iter().cloned().rev().collect();
+    }
+
+    fn parse_binary(regex: &mut Vec<RegexToken>) -> Result<RAST, Error> {
+
+    }
+    */
+
+    fn parse_regex(regex: &mut Vec<RegexToken>) -> Result<Option<RAST>, Error> {
+        Err(Error::new("Unimplemented"))
+    }
+
+    fn parse_unary_prime(regex: &mut Vec<RegexToken>) -> Result<Option<RAST>, Error> {
+        if let Some(t) = regex.pop() {
+            let token = match t {
+                RegexToken::KleenClosure => KleenClosure,
+                RegexToken::Question => Question,
+                RegexToken::Plus => Plus,
+                RegexToken::Times(min) => Times(min),
+                RegexToken::MinMax(min, max) => MinMax(min, max),
+                _ => return Err(Error::new("Unexpected token, expected unary operator"))
+            };
+
+            Ok(None)
+        } else {
+            Ok(None)
+        }
+    }
+        
+    fn parse_group(regex: &mut Vec<RegexToken>) -> Result<Option<RAST>, Error> {
+        if let Some(t) = regex.pop() {
+            match t {
+                RegexToken::Character(c) => Ok(Some(RAST::Atomic(c))),
+                RegexToken::LParen => {
+                    let group = parse_regex(regex)?;
+                    if let Some(t) = regex.pop() {
+                        match t {
+                            RegexToken::RParen => Ok(group),
+                            _ => Err(Error::new("Unexpected token, expected ')'"))
+                        }
+                    } else {
+                        Err(Error::new("Reached end of regex while parsing"))
+                    }
+                }, 
+                _ => Err(Error::new("Unexpected token, expected char or '('")),
+            }
+        } else {
+            Err(Error::new("Reached end of regex while parsing"))
+        }
+    }
+}
+

@@ -437,19 +437,19 @@ mod parse {
     use super::simpilfy::RegexToken;
     use crate::Error;
     use std::{rc::Rc, cell::RefCell};
-    use Binary_Operation::*;
-    use Unary_Operation::*;
+    use BinaryOperation::*;
+    use UnaryOperation::*;
 
     type Pointer = Rc<RAST>;
 
     #[derive(Copy, Clone, Debug, PartialEq)]
-    pub enum Binary_Operation {
+    pub enum BinaryOperation {
         Concat,
         Alternation,
     }
 
     #[derive(Copy, Clone, Debug, PartialEq)]
-    pub enum Unary_Operation {
+    pub enum UnaryOperation {
         MinMax(u8, u8),
         Times(u8),
         KleenClosure,
@@ -459,26 +459,65 @@ mod parse {
 
     #[derive(Clone, Debug, PartialEq)]
     pub enum RAST {
-        Binary(Pointer, Pointer, Binary_Operation),
-        Unary(Pointer, Unary_Operation),
+        Binary(Pointer, Pointer, BinaryOperation),
+        Unary(Pointer, UnaryOperation),
         Atomic(u8),
     }
     
-    /*
     pub fn parse(regex: &[RegexToken]) -> Result<RAST, Error> {
-        let mut regex = regex.iter().cloned().rev().collect();
+        let mut regex: Vec<RegexToken> = regex.iter().cloned().rev().collect();
+        parse_binary(&mut regex)
+    }
+    
+    pub fn parse_regex(regex: &mut Vec<RegexToken>) -> Result<RAST, Error> {
+        parse_binary(regex)
     }
 
     fn parse_binary(regex: &mut Vec<RegexToken>) -> Result<RAST, Error> {
-
+        let unary = parse_unary(regex)?;
+        if let Some(prime) = parse_binary_prime(regex)? {
+            Ok(RAST::Binary(Rc::new(unary), Rc::new(prime.0), prime.1))
+        } else {
+            Ok(unary)
+        }
     }
-    */
 
-    fn parse_regex(regex: &mut Vec<RegexToken>) -> Result<Option<RAST>, Error> {
-        Err(Error::new("Unimplemented"))
+    fn parse_binary_prime(regex: &mut Vec<RegexToken>) -> Result<Option<(RAST, BinaryOperation)>, Error> {
+        if let Some(t) = regex.pop() {
+            let token = match t {
+                RegexToken::Concat => Concat,
+                RegexToken::Alternation => Alternation,
+                _ => {
+                    regex.push(t);
+                    return Ok(None);
+                }
+            };
+            let unary = parse_unary(regex)?;
+            if let Some(prime) = parse_binary_prime(regex)? {
+                Ok(Some((RAST::Binary(Rc::new(unary), Rc::new(prime.0), prime.1), token)))
+            } else {
+                Ok(Some((unary, token)))
+            }
+        } else {
+            Ok(None)
+        }
+    }
+    
+    fn parse_unary(regex: &mut Vec<RegexToken>) -> Result<RAST, Error> {
+        let group = parse_group(regex)?;
+        let ops = parse_unary_prime(regex)?;
+        if ops.is_empty() {
+            return Ok(group);
+        }
+        
+        let mut rast = group;
+        for op in ops.iter().rev() {
+            rast = RAST::Unary(Rc::new(rast), *op);
+        }
+        Ok(rast)
     }
 
-    fn parse_unary_prime(regex: &mut Vec<RegexToken>) -> Result<Option<RAST>, Error> {
+    fn parse_unary_prime(regex: &mut Vec<RegexToken>) -> Result<Vec<UnaryOperation>, Error> {
         if let Some(t) = regex.pop() {
             let token = match t {
                 RegexToken::KleenClosure => KleenClosure,
@@ -486,19 +525,24 @@ mod parse {
                 RegexToken::Plus => Plus,
                 RegexToken::Times(min) => Times(min),
                 RegexToken::MinMax(min, max) => MinMax(min, max),
-                _ => return Err(Error::new("Unexpected token, expected unary operator"))
+                _ => {
+                    regex.push(t);
+                    return Ok(Vec::new());
+                },
             };
+            let mut ops = parse_unary_prime(regex)?;
+            ops.push(token);
 
-            Ok(None)
+            Ok(ops)
         } else {
-            Ok(None)
+            Ok(Vec::new())
         }
     }
         
-    fn parse_group(regex: &mut Vec<RegexToken>) -> Result<Option<RAST>, Error> {
+    fn parse_group(regex: &mut Vec<RegexToken>) -> Result<RAST, Error> {
         if let Some(t) = regex.pop() {
             match t {
-                RegexToken::Character(c) => Ok(Some(RAST::Atomic(c))),
+                RegexToken::Character(c) => Ok(RAST::Atomic(c)),
                 RegexToken::LParen => {
                     let group = parse_regex(regex)?;
                     if let Some(t) = regex.pop() {

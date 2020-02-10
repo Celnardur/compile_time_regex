@@ -1,5 +1,9 @@
 use lime_lex::*;
 
 fn main() {
-    println!("Hello, world!");
+    match lime_lex::regex::validate(r"a*?[^\0-}]") {
+        Ok(r) => println!("{:?}", r),
+        Err(e) => println!("{}", e),
+    }
+
 }

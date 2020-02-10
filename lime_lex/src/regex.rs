@@ -1,3 +1,12 @@
+use crate::Error;
+
+pub fn validate(regex: &str) -> Result<parse::RAST, Error> {
+    let tokens = scan::scan(regex)?;
+    println!("{:?}", tokens);
+    let simple = simpilfy::simpilfy(&tokens[..])?;
+    println!("{:?}", simple);
+    parse::parse(&simple[..])
+}
 
 mod scan {
     use std::{collections::HashSet};
@@ -466,7 +475,11 @@ mod parse {
     
     pub fn parse(regex: &[RegexToken]) -> Result<RAST, Error> {
         let mut regex: Vec<RegexToken> = regex.iter().cloned().rev().collect();
-        parse_binary(&mut regex)
+        let rast = parse_regex(&mut regex)?;
+        if !regex.is_empty() {
+            return Err(Error::new("Regex stoped parsing before the end"));
+        }
+        Ok(rast)
     }
     
     pub fn parse_regex(regex: &mut Vec<RegexToken>) -> Result<RAST, Error> {

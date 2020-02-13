@@ -1,11 +1,17 @@
 use std::collections::{HashSet};
 use crate::Error;
 
-
+/// All the tokens you could ever need for a regex in one place
 #[derive(Clone, Debug, PartialEq)]
 pub enum RegexToken {
     Character(u8),
     Digit(u8),
+    Number(u8),
+    MinMax(u8, u8),
+    Times(u8),
+    Set(HashMap<u8>),
+    InverseSet(HashSet<u8>),
+    Concat,
     Alternation,
     KleenClosure,
     Question,
@@ -18,6 +24,8 @@ pub enum RegexToken {
     LCurly,
     RCurly,
     Comma,
+    Dash,
+    Invert,
 }
 
 use RegexToken::*;
@@ -44,6 +52,11 @@ fn scan_token(regex: &mut Vec<u8>) -> Result<Option<FirstRegexToken>, Error> {
         return Ok(None);
     }
     let c = c.unwrap();
+
+    if c >= 0x30 && c <= 0x39 {
+        return Ok(Some(Digit(c & 0x0f)));
+    }
+
     match c {
         b'\\' => {
             if let Some(c) = regex.pop() {
@@ -64,8 +77,8 @@ fn scan_token(regex: &mut Vec<u8>) -> Result<Option<FirstRegexToken>, Error> {
         b']' => Ok(Some(RBracket)),
         b'.' => Ok(Some(Wildcard)),
         b',' => Ok(Some(Comma)),
-        b'0' => Ok(Some(Digit(0))),
-
+        b'-' => Ok(Some(Dash)),
+        b'^' => Ok(Some(Invert)),
         _ => Ok(Some(Character(c))),
     }
 }

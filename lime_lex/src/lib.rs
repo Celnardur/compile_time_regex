@@ -1,4 +1,3 @@
-//pub mod nfa;
 pub mod regex;
 
 //pub use nfa::NFA;
@@ -23,7 +22,7 @@ impl Error {
     }
 
     pub fn message(&self) -> &str {
-        self.message()
+        &self.message
     }
 }
 

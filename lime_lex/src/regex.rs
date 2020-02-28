@@ -65,29 +65,7 @@ mod scan {
             b'+' => Ok(Some(Plus)),
             b'(' => Ok(Some(LParen)),
             b')' => Ok(Some(RParen)),
-            b'{' => {
-                let min = get_num(regex)?;
-                if let Some(c) = regex.pop() {
-                    match c {
-                        b'}' => Ok(Some(Times(min))),
-                        b',' => {
-                            let max = get_num(regex)?;
-                            if let Some(c) = regex.pop() {
-                                if c == b'}' {
-                                    Ok(Some(MinMax(min, max)))
-                                } else {
-                                    Err(Error::new("Mismatched {}"))
-                                }
-                            } else {
-                                Err(Error::new("Regex ends without closing {"))
-                            }
-                        },
-                        _ => Err(Error::new("Illegal character in brackets")),
-                    }
-                } else {
-                    Err(Error::new("Regex ends without closing {"))
-                }
-            }, 
+            b'{' => scan_times(regex), 
             b'[' => {
                 if let Some(c) = regex.pop() {
                     if c == b'^' {
@@ -114,30 +92,55 @@ mod scan {
             _ => letter,
         }
     }
+    
+    fn scan_times(regex: &mut Vec<u8>) -> Result<Option<FirstRegexToken>, Error> {
+        // get first number in 
+        let min = get_num(regex)?;
+
+        // check for closing } (times token) or , (min, max token)
+        let c = regex.pop();
+        if c == None {
+            return Err(Error::new("Regex ends without closing {"));
+        }
+        match c.unwrap() {
+            b'}' => return Ok(Some(Times(min))),
+            b',' => (),
+            _ => return Err(Error::new("Illegal character in brackets")),
+        }
+
+        // get max for min max
+        let max = get_num(regex)?;
+
+        // make sure it has closing }
+        if let Some(c) = regex.pop() {
+            if c == b'}' {
+                Ok(Some(MinMax(min, max)))
+            } else {
+                Err(Error::new("Mismatched {}"))
+            }
+        } else {
+            Err(Error::new("Regex ends without closing {"))
+        }
+    }
 
     fn get_num(regex: &mut Vec<u8>) -> Result<u8, Error> {
-        let mut digits: Vec<u16> = Vec::new();
+        if regex.is_empty() {
+            return Err(Error::new("Mismatched {"));
+        }
+
+        let mut number: u64 = 0;
         while let Some(c) = regex.pop() {
             if c < 0x30 || c > 0x39 {
                 regex.push(c);
                 break;
             }
-            digits.push((c & 0x0f) as u16);
-        }
-        if digits.len() > 3 {
-            return Err(Error::new("{} opperation doesn't support numbers greater than 255"))
+            number = (number * 10) + ((c & 0x0f) as u64);
         }
 
-        let mut acc: u16 = 0;
-        let mut mult = 1;
-        for digit in digits.iter().rev() {
-            acc += (digit * mult) as u16;
-            mult *= 10;
+        if number > 255 {
+            return Err(Error::new("Numbers in {} must be less than 256"));
         }
-        if acc > 255 {
-            return Err(Error::new("{} opperation doesn't support numbers greater than 255"));
-        }
-        Ok(acc as u8)
+        Ok(number as u8)
     }
 
     fn get_set(regex: &mut Vec<u8>) -> Result<HashSet<u8>, Error> {
@@ -252,7 +255,7 @@ mod scan {
                 for _ in 0..length {
                     regex.push(rng.gen_range(32, 127) as u8 as char);
                 }
-                scan(&regex);
+                scan(&regex); // result needs to be unused
             }
         }
 
@@ -434,9 +437,8 @@ mod simpilfy {
                     regex.push(rng.gen_range(32, 127) as u8 as char);
                 }
                 if let Ok(regex) = super::super::scan::scan(&regex) {
-                    simpilfy(&regex[..]);
+                    simpilfy(&regex[..]); // result needs to be unused
                 }
-
             }
         }
     }

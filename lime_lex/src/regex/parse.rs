@@ -128,3 +128,42 @@ fn parse_group(regex: &mut Vec<Token>) -> Result<RAST, Error> {
         Err(Error::new("Reached end of regex while parsing"))
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use super::BinaryOperation::*;
+    use super::UnaryOperation::*;
+    use super::RAST::*;
+    use crate::Error;
+    use std::rc::Rc;
+    use rand::Rng;
+
+    #[test]
+    fn basic() -> Result<(), Error> {
+        let regex = "aa";
+        let regex = crate::regex::get_rast(regex)?;
+        assert_eq!(regex, Binary(
+                Rc::new(Atomic(97)), 
+                Rc::new(Atomic(97)), 
+                Concat
+        ));
+
+        Ok(())
+    }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn monkey() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..10000 {
+            let length = rng.gen_range(0, 16);
+            let mut regex = String::new();
+            for _ in 0..length {
+                regex.push(rng.gen_range(32, 127) as u8 as char);
+            }
+            crate::regex::get_rast(&regex);
+        }
+    }
+}
+

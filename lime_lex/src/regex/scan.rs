@@ -247,5 +247,4 @@ mod test {
             scan(&regex); // result needs to be unused
         }
     }
-
 }

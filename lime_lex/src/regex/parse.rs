@@ -153,6 +153,12 @@ mod test {
     }
 
     #[test]
+    fn binary() -> Result<(), Error> {
+        let regex = "aa|ab";
+        let regex = crate::regex::get_rast(regex)?;
+    }
+
+    #[test]
     #[allow(unused_must_use)]
     fn monkey() {
         let mut rng = rand::thread_rng();

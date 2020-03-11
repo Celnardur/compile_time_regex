@@ -1,7 +1,4 @@
-pub mod regex;
-
-//pub use nfa::NFA;
-
+mod binary_tree;
 
 #[derive(Debug)]
 pub struct Error {
@@ -28,12 +25,20 @@ impl Error {
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "lime_lex/{}", self.message)
+        write!(f, "lime_tree/{}", self.message)
     }
 }
 
 impl std::error::Error for Error {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
     }
 }

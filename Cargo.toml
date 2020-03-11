@@ -4,4 +4,5 @@ members = [
     "lime_lex",
     "quick_bison",
     "quicklime",
+    "lime_tree", 
 ]

@@ -1,4 +1,5 @@
-mod binary_tree;
+pub mod pointer;
+pub mod binary_tree;
 
 #[derive(Debug)]
 pub struct Error {

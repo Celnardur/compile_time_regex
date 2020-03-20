@@ -1,5 +1,5 @@
-use std::{collections::HashSet};
 use crate::Error;
+use std::collections::HashSet;
 
 #[derive(Clone, Debug, PartialEq)]
 pub enum FirstRegexToken {
@@ -47,14 +47,14 @@ fn scan_token(regex: &mut Vec<u8>) -> Result<Option<FirstRegexToken>, Error> {
             } else {
                 Err(Error::new("Cannot have \\ on end of regex"))
             }
-        },
+        }
         b'|' => Ok(Some(Alternation)),
         b'*' => Ok(Some(KleenClosure)),
         b'?' => Ok(Some(Question)),
         b'+' => Ok(Some(Plus)),
         b'(' => Ok(Some(LParen)),
         b')' => Ok(Some(RParen)),
-        b'{' => scan_times(regex), 
+        b'{' => scan_times(regex),
         b'[' => {
             if let Some(c) = regex.pop() {
                 if c == b'^' {
@@ -66,7 +66,7 @@ fn scan_token(regex: &mut Vec<u8>) -> Result<Option<FirstRegexToken>, Error> {
             } else {
                 Err(Error::new("Mismatched []"))
             }
-        },
+        }
         b'.' => Ok(Some(Wildcard)),
         _ => Ok(Some(Character(c))),
     }
@@ -83,7 +83,7 @@ fn get_escape_char(letter: u8) -> u8 {
 }
 
 fn scan_times(regex: &mut Vec<u8>) -> Result<Option<FirstRegexToken>, Error> {
-    // get first number in 
+    // get first number in
     let min = get_num(regex)?;
 
     // check for closing } (times token) or , (min, max token)
@@ -142,7 +142,7 @@ fn get_set(regex: &mut Vec<u8>) -> Result<HashSet<u8>, Error> {
                 } else {
                     return Err(Error::new("Cannot have \\ on end of regex"));
                 }
-            },
+            }
             b']' => break,
             _ => {
                 let first = c;
@@ -151,23 +151,23 @@ fn get_set(regex: &mut Vec<u8>) -> Result<HashSet<u8>, Error> {
                         b']' => {
                             set.insert(first);
                             break;
-                        },
+                        }
                         b'-' => {
                             if let Some(c) = regex.pop() {
-                                for i in first..(c+1) {
+                                for i in first..(c + 1) {
                                     set.insert(i);
                                 }
                             } else {
                                 return Err(Error::new("Mismatched []"));
                             }
-                        },
+                        }
                         _ => {
                             set.insert(first);
                             regex.push(c);
-                        },
+                        }
                     }
                 } else {
-                    return Err(Error::new("Mismatched []"))
+                    return Err(Error::new("Mismatched []"));
                 }
             }
         }
@@ -178,14 +178,27 @@ fn get_set(regex: &mut Vec<u8>) -> Result<HashSet<u8>, Error> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use rand::Rng;
     use crate::Error;
+    use rand::Rng;
 
-    #[test] 
+    #[test]
     fn basic() -> Result<(), Error> {
         let regex = r"\||*?+().a";
         let tokens = scan(regex)?;
-        assert_eq!(tokens, [Character(b'|'), Alternation, KleenClosure, Question, Plus, LParen, RParen, Wildcard, Character(b'a')]);
+        assert_eq!(
+            tokens,
+            [
+                Character(b'|'),
+                Alternation,
+                KleenClosure,
+                Question,
+                Plus,
+                LParen,
+                RParen,
+                Wildcard,
+                Character(b'a')
+            ]
+        );
         Ok(())
     }
 
@@ -201,8 +214,8 @@ mod test {
                 assert!(s.contains(&b'a'));
                 assert!(s.contains(&b'b'));
                 assert!(s.contains(&b'c'));
-            },
-            _ => panic!("Unexpected token")
+            }
+            _ => panic!("Unexpected token"),
         }
 
         let regex = r"[^a-c]";
@@ -215,8 +228,8 @@ mod test {
                 assert!(s.contains(&b'a'));
                 assert!(s.contains(&b'b'));
                 assert!(s.contains(&b'c'));
-            },
-            _ => panic!("Unexpected token")
+            }
+            _ => panic!("Unexpected token"),
         }
 
         Ok(())
@@ -239,7 +252,7 @@ mod test {
     fn monkey() {
         let mut rng = rand::thread_rng();
         for _ in 0..10000 {
-            let length = rng.gen_range(0,16);
+            let length = rng.gen_range(0, 16);
             let mut regex = String::new();
             for _ in 0..length {
                 regex.push(rng.gen_range(32, 127) as u8 as char);

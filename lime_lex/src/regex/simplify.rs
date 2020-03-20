@@ -1,6 +1,6 @@
 use super::scan::FirstRegexToken;
-use std::{collections::HashSet};
 use crate::Error;
+use std::collections::HashSet;
 use Token::*;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
@@ -27,7 +27,7 @@ pub fn simpilfy(regex: &[FirstRegexToken]) -> Result<Vec<Token>, Error> {
         match t {
             FirstRegexToken::Set(hs) => {
                 if hs.is_empty() {
-                    return Err(Error::new("Cannot have an empty set []"))
+                    return Err(Error::new("Cannot have an empty set []"));
                 }
                 tokens.push(LParen);
                 for byte in hs {
@@ -36,7 +36,7 @@ pub fn simpilfy(regex: &[FirstRegexToken]) -> Result<Vec<Token>, Error> {
                 }
                 tokens.pop();
                 tokens.push(RParen);
-            },
+            }
             FirstRegexToken::InverseSet(set) => {
                 let mut new_set = HashSet::new();
                 // sorry ascii only
@@ -47,7 +47,7 @@ pub fn simpilfy(regex: &[FirstRegexToken]) -> Result<Vec<Token>, Error> {
                 }
                 let hs = new_set;
                 if hs.is_empty() {
-                    return Err(Error::new("Cannot have an empty set []"))
+                    return Err(Error::new("Cannot have an empty set []"));
                 }
                 tokens.push(LParen);
                 for byte in hs {
@@ -56,7 +56,7 @@ pub fn simpilfy(regex: &[FirstRegexToken]) -> Result<Vec<Token>, Error> {
                 }
                 tokens.pop();
                 tokens.push(RParen);
-            },
+            }
             FirstRegexToken::Wildcard => {
                 tokens.push(LParen);
                 for byte in 0..127 {
@@ -85,18 +85,18 @@ pub fn simpilfy(regex: &[FirstRegexToken]) -> Result<Vec<Token>, Error> {
         let second = tokens[index + 1];
 
         match first {
-            Character(_) => first_is_normal(&mut tokens, second, index+1),
-            MinMax(_, _) => first_is_normal(&mut tokens, second, index+1),
-            Times(_) => first_is_normal(&mut tokens, second, index+1),
-            KleenClosure => first_is_normal(&mut tokens, second, index+1),
-            Question => first_is_normal(&mut tokens, second, index+1),
-            Plus => first_is_normal(&mut tokens, second, index+1),
-            RParen => first_is_normal(&mut tokens, second, index+1),
+            Character(_) => first_is_normal(&mut tokens, second, index + 1),
+            MinMax(_, _) => first_is_normal(&mut tokens, second, index + 1),
+            Times(_) => first_is_normal(&mut tokens, second, index + 1),
+            KleenClosure => first_is_normal(&mut tokens, second, index + 1),
+            Question => first_is_normal(&mut tokens, second, index + 1),
+            Plus => first_is_normal(&mut tokens, second, index + 1),
+            RParen => first_is_normal(&mut tokens, second, index + 1),
             _ => (),
         }
         index += 1;
     }
-    
+
     Ok(tokens)
 }
 
@@ -119,10 +119,10 @@ mod test {
         let regex = super::super::scan::scan(regex)?;
         let tokens = simpilfy(&regex[..])?;
         assert_eq!(tokens, [Character(b'a'), Concat, Character(b'a')]);
-        Ok(()) 
+        Ok(())
     }
 
-    #[test] 
+    #[test]
     fn swaping() -> Result<(), Error> {
         let regex = "[a-c]";
         let regex = super::super::scan::scan(regex)?;
@@ -152,13 +152,26 @@ mod test {
         let regex = "a*a";
         let regex = super::super::scan::scan(regex)?;
         let tokens = simpilfy(&regex[..])?;
-        assert_eq!(tokens, [Character(b'a'), KleenClosure, Concat, Character(b'a')]);
+        assert_eq!(
+            tokens,
+            [Character(b'a'), KleenClosure, Concat, Character(b'a')]
+        );
 
         let regex = "a*(a)";
         let regex = super::super::scan::scan(regex)?;
         let tokens = simpilfy(&regex[..])?;
-        assert_eq!(tokens, [Character(b'a'), KleenClosure, Concat, LParen, Character(b'a'), RParen]);
-        Ok(()) 
+        assert_eq!(
+            tokens,
+            [
+                Character(b'a'),
+                KleenClosure,
+                Concat,
+                LParen,
+                Character(b'a'),
+                RParen
+            ]
+        );
+        Ok(())
     }
 
     #[test]
@@ -166,7 +179,7 @@ mod test {
     fn monkey() {
         let mut rng = rand::thread_rng();
         for _ in 0..10000 {
-            let length = rng.gen_range(0,16);
+            let length = rng.gen_range(0, 16);
             let mut regex = String::new();
             for _ in 0..length {
                 regex.push(rng.gen_range(32, 127) as u8 as char);

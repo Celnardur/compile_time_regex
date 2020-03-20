@@ -59,7 +59,10 @@ fn parse_binary_prime(regex: &mut Vec<Token>) -> Result<Option<(RAST, BinaryOper
         };
         let unary = parse_unary(regex)?;
         if let Some(prime) = parse_binary_prime(regex)? {
-            Ok(Some((RAST::Binary(Box::new(unary), Box::new(prime.0), prime.1), token)))
+            Ok(Some((
+                RAST::Binary(Box::new(unary), Box::new(prime.0), prime.1),
+                token,
+            )))
         } else {
             Ok(Some((unary, token)))
         }
@@ -81,21 +84,21 @@ fn parse_unary(regex: &mut Vec<Token>) -> Result<RAST, Error> {
 fn parse_unary_prime(regex: &mut Vec<Token>) -> Result<Option<UnaryOperation>, Error> {
     Ok(if let Some(t) = regex.pop() {
         match t {
-            Token::KleenClosure     => Some(KleenClosure),
-            Token::Question         => Some(Question),
-            Token::Plus             => Some(Plus),
-            Token::Times(min)       => Some(Times(min)),
+            Token::KleenClosure => Some(KleenClosure),
+            Token::Question => Some(Question),
+            Token::Plus => Some(Plus),
+            Token::Times(min) => Some(Times(min)),
             Token::MinMax(min, max) => Some(MinMax(min, max)),
             _ => {
                 regex.push(t);
                 None
-            },
+            }
         }
     } else {
         None
     })
 }
-    
+
 fn parse_group(regex: &mut Vec<Token>) -> Result<RAST, Error> {
     if let Some(t) = regex.pop() {
         match t {
@@ -105,12 +108,12 @@ fn parse_group(regex: &mut Vec<Token>) -> Result<RAST, Error> {
                 if let Some(t) = regex.pop() {
                     match t {
                         Token::RParen => Ok(group),
-                        _ => Err(Error::new("Unexpected token, expected ')'"))
+                        _ => Err(Error::new("Unexpected token, expected ')'")),
                     }
                 } else {
                     Err(Error::new("Reached end of regex while parsing"))
                 }
-            }, 
+            }
             _ => Err(Error::new("Unexpected token, expected char or '('")),
         }
     } else {
@@ -120,8 +123,8 @@ fn parse_group(regex: &mut Vec<Token>) -> Result<RAST, Error> {
 
 #[cfg(test)]
 mod test {
-    use super::*;
     use super::RAST::*;
+    use super::*;
     use crate::Error;
     use rand::Rng;
 
@@ -129,11 +132,10 @@ mod test {
     fn basic() -> Result<(), Error> {
         let regex = "aa";
         let regex = crate::regex::get_rast(regex)?;
-        assert_eq!(regex, Binary(
-                Box::new(Atomic(97)), 
-                Box::new(Atomic(97)), 
-                Concat
-        ));
+        assert_eq!(
+            regex,
+            Binary(Box::new(Atomic(97)), Box::new(Atomic(97)), Concat)
+        );
 
         Ok(())
     }
@@ -142,39 +144,36 @@ mod test {
     fn binary() -> Result<(), Error> {
         let regex = "aa|ab";
         let regex = crate::regex::get_rast(regex)?;
-        let expected = 
-            Binary(
+        let expected = Binary(
+            Box::new(Atomic(b'a')),
+            Box::new(Binary(
                 Box::new(Atomic(b'a')),
-                Box::new(Binary(
-                    Box::new(Atomic(b'a')),
-                    Box::new(Binary(
-                        Box::new(Atomic(b'a')),
-                        Box::new(Atomic(b'b')),
-                        Concat,
-                    )),
-                    Alternation,
-                )),
-                Concat,
-            );
-        assert_eq!(regex, expected);
-
-        let regex = "(ab)|(cd)";
-        let regex = crate::regex::get_rast(regex)?;
-        let expected = 
-            Binary(
                 Box::new(Binary(
                     Box::new(Atomic(b'a')),
                     Box::new(Atomic(b'b')),
                     Concat,
                 )),
-                Box::new(Binary(
-                    Box::new(Atomic(b'c')),
-                    Box::new(Atomic(b'd')),
-                    Concat,
-                )),
                 Alternation,
-            )
-        ;
+            )),
+            Concat,
+        );
+        assert_eq!(regex, expected);
+
+        let regex = "(ab)|(cd)";
+        let regex = crate::regex::get_rast(regex)?;
+        let expected = Binary(
+            Box::new(Binary(
+                Box::new(Atomic(b'a')),
+                Box::new(Atomic(b'b')),
+                Concat,
+            )),
+            Box::new(Binary(
+                Box::new(Atomic(b'c')),
+                Box::new(Atomic(b'd')),
+                Concat,
+            )),
+            Alternation,
+        );
         assert_eq!(regex, expected);
 
         Ok(())
@@ -189,16 +188,11 @@ mod test {
 
         let regex = "ab+";
         let regex = crate::regex::get_rast(regex)?;
-        let expected = 
-            Binary(
-                Box::new(Atomic(b'a')),
-                Box::new(Unary(
-                    Box::new(Atomic(b'b')),
-                    Plus
-                )),
-                Concat,
-            )
-        ;
+        let expected = Binary(
+            Box::new(Atomic(b'a')),
+            Box::new(Unary(Box::new(Atomic(b'b')), Plus)),
+            Concat,
+        );
         assert_eq!(regex, expected);
 
         let regex = "(ab)+";
@@ -230,4 +224,3 @@ mod test {
         }
     }
 }
-

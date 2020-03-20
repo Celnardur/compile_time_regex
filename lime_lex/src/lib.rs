@@ -2,10 +2,9 @@ pub mod regex;
 
 //pub use nfa::NFA;
 
-
 #[derive(Debug, PartialEq)]
 pub struct Error {
-    message: String, 
+    message: String,
 }
 
 impl Error {
@@ -14,7 +13,7 @@ impl Error {
             message: String::from(message),
         })
     }
-    
+
     pub fn new(message: &str) -> Error {
         Error {
             message: String::from(message),
@@ -37,4 +36,3 @@ impl std::error::Error for Error {
         None
     }
 }
-

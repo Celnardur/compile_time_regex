@@ -1,6 +1,6 @@
+pub mod parse;
 pub mod scan;
 pub mod simplify;
-pub mod parse;
 
 use crate::Error;
 use parse::RAST;
@@ -20,19 +20,19 @@ enum RegexType {
 }
 
 fn check_rast(regex: &RAST) -> Result<RegexType, Error> {
-    match regex { 
+    match regex {
         RAST::Binary(left, right, _) => {
             check_rast(&left)?;
             check_rast(&right)?;
             Ok(RegexType::Binary)
-        },
+        }
         RAST::Unary(left, _) => {
             let left = check_rast(&left)?;
             match left {
                 RegexType::Unary => Err(Error::new("Cannot have two unary operations in a row")),
-                _ => Ok(RegexType::Unary), 
+                _ => Ok(RegexType::Unary),
             }
-        },
+        }
         RAST::Atomic(_) => Ok(RegexType::Atomic),
     }
 }
@@ -45,11 +45,16 @@ mod test {
     fn adj_unary() {
         let regex = "a*+";
         let regex = crate::regex::get_rast(regex);
-        assert_eq!(regex, Err(Error::new("Regex stoped parsing before the end")));
+        assert_eq!(
+            regex,
+            Err(Error::new("Regex stoped parsing before the end"))
+        );
 
         let regex = "(a*)+";
         let regex = crate::regex::get_rast(regex);
-        assert_eq!(regex, Err(Error::new("Cannot have two unary operations in a row")));
+        assert_eq!(
+            regex,
+            Err(Error::new("Cannot have two unary operations in a row"))
+        );
     }
 }
-

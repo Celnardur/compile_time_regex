@@ -3,5 +3,4 @@ fn main() {
         Ok(r) => println!("{:?}", r),
         Err(e) => println!("{}", e),
     }
-
 }

@@ -3,7 +3,7 @@ pub mod regex;
 //pub use nfa::NFA;
 
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct Error {
     message: String, 
 }
@@ -28,7 +28,7 @@ impl Error {
 
 impl std::fmt::Display for Error {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "lime_lex/{}", self.message)
+        write!(f, "/lime_lex {}", self.message)
     }
 }
 
@@ -37,3 +37,4 @@ impl std::error::Error for Error {
         None
     }
 }
+

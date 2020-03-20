@@ -4,19 +4,24 @@ for regexes that I'm using.
 LR Grammer
 regex -> binary_op
 
-binary_op -> binary_op ALTERNATION unary_op
-binary_op -> binary_op CONCAT unary_op
-binary_op -> unary_op
+binary -> binary binary_op unary
+binary -> unary
 
-unary_op -> unary_op KLEENCLOSURE
-unary_op -> unary_op QUESTION
-unary_op -> unary_op PLUS
-unary_op -> unary_op TIMES
-unary_op -> unary_op MINMAX
-unary_op -> group
+unary -> group unary_op
+unary -> group
 
 group -> LPAREN regex RPAREN
 group -> CHARACTER
+
+binary -> ALTERNATION 
+binary -> CONCAT
+
+unary_op -> KLEENCLOSURE
+unary_op -> QUESTION
+unary_op -> PLUS
+unary_op -> TIMES
+unary_op -> MINMAX
+
 
 
 LL(1) Grammer
@@ -27,7 +32,7 @@ bp -> binary_op unary bp
 bp -> /* EPSILON */
 
 unary -> group up
-up -> unary_op up
+up -> unary_op 
 up -> /* EPSILON */
 
 group -> LPAREN regex RPAREN

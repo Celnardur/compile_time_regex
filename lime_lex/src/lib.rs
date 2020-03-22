@@ -1,4 +1,3 @@
-pub mod nfa;
 pub mod regex;
 
 #[derive(Debug, PartialEq)]

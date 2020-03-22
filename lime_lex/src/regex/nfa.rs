@@ -1,6 +1,6 @@
-use crate::regex::parse::BinaryOperation;
-use crate::regex::parse::UnaryOperation;
-use crate::regex::parse::RAST;
+use super::parse::BinaryOperation;
+use super::parse::UnaryOperation;
+use super::parse::RAST;
 use BinaryOperation::*;
 use Transition::*;
 use UnaryOperation::*;

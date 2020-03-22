@@ -1,6 +1,7 @@
 pub mod parse;
 pub mod scan;
 pub mod simplify;
+pub mod nfa;
 
 use crate::Error;
 use parse::RAST;

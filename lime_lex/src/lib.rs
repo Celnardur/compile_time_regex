@@ -1,6 +1,5 @@
+pub mod nfa;
 pub mod regex;
-
-//pub use nfa::NFA;
 
 #[derive(Debug, PartialEq)]
 pub struct Error {

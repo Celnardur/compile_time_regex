@@ -27,8 +27,12 @@ unary_op -> MINMAX
 LL(1) Grammer
 regex -> binary
 
-binary -> unary bp
-bp -> binary_op unary bp
+altern -> concat ap
+ap -> bar concat ap
+ap -> /* EPSILON */ 
+
+concat -> unary bp
+bp -> dot unary bp
 bp -> /* EPSILON */
 
 unary -> group up

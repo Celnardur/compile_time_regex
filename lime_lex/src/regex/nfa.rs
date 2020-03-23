@@ -127,20 +127,22 @@ fn construct_unary_op(rast: &RAST, op: UnaryOperation) -> NFA {
             }
         }
         MinMax(min, max) => {
-            let mut at = add_nfa(&mut nfa, middle.clone());
+            let mut at = Range { start: 0, end: 0 };
+            new_epsilon(&mut nfa, Vec::new());
             // start from one because at is already the first one added
-            for _ in 1..min {
+            for _ in 0..min {
                 let next = add_nfa(&mut nfa, middle.clone());
                 nfa[at.end].add_epsilon(next.start);
                 at = next;
             }
             let mut hook_to_end = Vec::new();
-            for _ in (min + 1)..max {
+            for _ in min..max {
                 hook_to_end.push(at);
                 let next = add_nfa(&mut nfa, middle.clone());
                 nfa[at.end].add_epsilon(next.start);
+                at = next;
             }
-            let end = new_epsilon(&mut nfa, Vec::new());
+            let end = at.end;
 
             for range in hook_to_end {
                 nfa[range.end].add_epsilon(end);
@@ -153,6 +155,8 @@ fn construct_unary_op(rast: &RAST, op: UnaryOperation) -> NFA {
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::Error;
+    use rand::Rng;
 
     #[test]
     fn test_add_epsilon() {
@@ -178,5 +182,160 @@ mod test {
         );
         assert_eq!(range, Range { start: 2, end: 3 });
     }
-}
 
+    #[test]
+    fn atomic() -> Result<(), Error> {
+        let regex = "a";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(nfa, vec![Character(b'a', 1), Epsilon(vec![])]);
+        Ok(())
+    }
+
+    #[test]
+    fn binary() -> Result<(), Error> {
+        let regex = "ab";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Character(b'a', 1),
+                Epsilon(vec![2]),
+                Character(b'b', 3),
+                Epsilon(vec![])
+            ]
+        );
+
+        let regex = "a|b";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Epsilon(vec![1, 3]),
+                Character(b'a', 2),
+                Epsilon(vec![5]),
+                Character(b'b', 4),
+                Epsilon(vec![5]),
+                Epsilon(vec![])
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn unary_kleen_closure() -> Result<(), Error> {
+        let regex = "a*";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Epsilon(vec![1, 3]),
+                Character(b'a', 2),
+                Epsilon(vec![3]),
+                Epsilon(vec![0])
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn unary_plus() -> Result<(), Error> {
+        let regex = "a+";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Character(b'a', 1),
+                Epsilon(vec![2]),
+                Epsilon(vec![3, 5]),
+                Character(b'a', 4),
+                Epsilon(vec![5]),
+                Epsilon(vec![2])
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn unary_question() -> Result<(), Error> {
+        let regex = "a?";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Epsilon(vec![1, 3]),
+                Character(b'a', 2),
+                Epsilon(vec![3]),
+                Epsilon(vec![])
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn unary_times() -> Result<(), Error> {
+        let regex = "a{3}";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Character(b'a', 1),
+                Epsilon(vec![2]),
+                Character(b'a', 3),
+                Epsilon(vec![4]),
+                Character(b'a', 5),
+                Epsilon(vec![]),
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn unary_min_max() -> Result<(), Error> {
+        let regex = "a{2,4}";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Epsilon(vec![1]),
+                Character(b'a', 2),
+                Epsilon(vec![3]),
+                Character(b'a', 4),
+                Epsilon(vec![5, 8]),
+                Character(b'a', 6),
+                Epsilon(vec![7, 8]),
+                Character(b'a', 8),
+                Epsilon(vec![]),
+            ]
+        );
+
+        let regex = "a{0,3}";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Epsilon(vec![1, 6]),
+                Character(b'a', 2),
+                Epsilon(vec![3, 6]),
+                Character(b'a', 4),
+                Epsilon(vec![5, 6]),
+                Character(b'a', 6),
+                Epsilon(vec![]),
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
+    #[allow(unused_must_use)]
+    fn monkey() {
+        let mut rng = rand::thread_rng();
+        for _ in 0..10000 {
+            let length = rng.gen_range(0, 16);
+            let mut regex = String::new();
+            for _ in 0..length {
+                regex.push(rng.gen_range(32, 127) as u8 as char);
+            }
+            crate::regex::get_nfa(&regex);
+        }
+    }
+}

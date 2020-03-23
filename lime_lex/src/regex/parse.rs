@@ -35,30 +35,61 @@ pub fn parse(regex: &[Token]) -> Result<Box<RAST>, Error> {
 }
 
 pub fn parse_regex(regex: &mut Vec<Token>) -> Result<RAST, Error> {
-    parse_binary(regex)
+    parse_altern(regex)
 }
 
-fn parse_binary(regex: &mut Vec<Token>) -> Result<RAST, Error> {
-    let unary = parse_unary(regex)?;
-    if let Some(prime) = parse_binary_prime(regex)? {
-        Ok(RAST::Binary(Box::new(unary), Box::new(prime.0), prime.1))
+fn parse_altern(regex: &mut Vec<Token>) -> Result<RAST, Error> {
+    let concat = parse_concat(regex)?;
+    if let Some(prime) = parse_altern_prime(regex)? {
+        Ok(RAST::Binary(Box::new(concat), Box::new(prime.0), prime.1))
     } else {
-        Ok(unary)
+        Ok(concat)
     }
 }
 
-fn parse_binary_prime(regex: &mut Vec<Token>) -> Result<Option<(RAST, BinaryOperation)>, Error> {
+fn parse_altern_prime(regex: &mut Vec<Token>) -> Result<Option<(RAST, BinaryOperation)>, Error> {
     if let Some(t) = regex.pop() {
         let token = match t {
-            Token::Concat => Concat,
             Token::Alternation => Alternation,
             _ => {
                 regex.push(t);
                 return Ok(None);
             }
         };
+        let concat = parse_concat(regex)?;
+        if let Some(prime) = parse_altern_prime(regex)? {
+            Ok(Some((
+                RAST::Binary(Box::new(concat), Box::new(prime.0), prime.1),
+                token,
+            )))
+        } else {
+            Ok(Some((concat, token)))
+        }
+    } else {
+        Ok(None)
+    }
+}
+
+fn parse_concat(regex: &mut Vec<Token>) -> Result<RAST, Error> {
+    let unary = parse_unary(regex)?;
+    if let Some(prime) = parse_concat_prime(regex)? {
+        Ok(RAST::Binary(Box::new(unary), Box::new(prime.0), prime.1))
+    } else {
+        Ok(unary)
+    }
+}
+
+fn parse_concat_prime(regex: &mut Vec<Token>) -> Result<Option<(RAST, BinaryOperation)>, Error> {
+    if let Some(t) = regex.pop() {
+        let token = match t {
+            Token::Concat => Concat,
+            _ => {
+                regex.push(t);
+                return Ok(None);
+            }
+        };
         let unary = parse_unary(regex)?;
-        if let Some(prime) = parse_binary_prime(regex)? {
+        if let Some(prime) = parse_concat_prime(regex)? {
             Ok(Some((
                 RAST::Binary(Box::new(unary), Box::new(prime.0), prime.1),
                 token,
@@ -142,7 +173,7 @@ mod test {
 
     #[test]
     fn binary() -> Result<(), Error> {
-        let regex = "aa|ab";
+        let regex = "a(a|(ab))";
         let regex = crate::regex::get_rast(regex)?;
         let expected = Binary(
             Box::new(Atomic(b'a')),
@@ -159,8 +190,10 @@ mod test {
         );
         assert_eq!(regex, expected);
 
-        let regex = "(ab)|(cd)";
+        let regex = "ab|cd";
         let regex = crate::regex::get_rast(regex)?;
+        let eq = "(ab)|(cd)";
+        let eq = crate::regex::get_rast(eq)?;
         let expected = Binary(
             Box::new(Binary(
                 Box::new(Atomic(b'a')),
@@ -175,6 +208,7 @@ mod test {
             Alternation,
         );
         assert_eq!(regex, expected);
+        assert_eq!(regex, eq);
 
         Ok(())
     }

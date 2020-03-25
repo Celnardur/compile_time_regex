@@ -326,6 +326,28 @@ mod test {
     }
 
     #[test]
+    fn test_combo() -> Result<(), Error> {
+        let regex = "a(b|c)*";
+        let nfa = crate::regex::get_nfa(regex)?;
+        assert_eq!(
+            nfa,
+            vec![
+                Character(b'a', 1),
+                Epsilon(vec![2]),
+                Epsilon(vec![3, 9]),
+                Epsilon(vec![4, 6]),
+                Character(b'b', 5),
+                Epsilon(vec![8]),
+                Character(b'c', 7),
+                Epsilon(vec![8]),
+                Epsilon(vec![9]),
+                Epsilon(vec![2]),
+            ]
+        );
+        Ok(())
+    }
+
+    #[test]
     #[allow(unused_must_use)]
     fn monkey() {
         let mut rng = rand::thread_rng();

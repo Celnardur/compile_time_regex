@@ -4,8 +4,8 @@ pub mod scan;
 pub mod simplify;
 
 use crate::Error;
-use parse::RAST;
 use parse::UnaryOperation;
+use parse::RAST;
 
 pub fn get_rast(regex: &str) -> Result<parse::RAST, Error> {
     let tokens = scan::scan(regex)?;
@@ -40,15 +40,19 @@ fn check_rast(regex: &RAST) -> Result<RegexType, Error> {
             match op {
                 UnaryOperation::MinMax(min, max) => {
                     if min >= max {
-                        return Err(Error::new("In {min,max} operator, min should be less than max"));
+                        return Err(Error::new(
+                            "In {min,max} operator, min should be less than max",
+                        ));
                     }
                 }
                 UnaryOperation::Times(times) => {
                     if *times == 0 {
-                        return Err(Error::new("In {times} operator, times should be greater than zero"));
+                        return Err(Error::new(
+                            "In {times} operator, times should be greater than zero",
+                        ));
                     }
                 }
-                _ => (), 
+                _ => (),
             }
             let left = check_rast(&left)?;
             match left {
@@ -87,14 +91,18 @@ mod test {
         let regex = crate::regex::get_rast(regex);
         assert_eq!(
             regex,
-            Err(Error::new("In {min,max} operator, min should be less than max"))
+            Err(Error::new(
+                "In {min,max} operator, min should be less than max"
+            ))
         );
 
         let regex = "a{0}";
         let regex = crate::regex::get_rast(regex);
         assert_eq!(
             regex,
-            Err(Error::new("In {times} operator, times should be greater than zero"))
+            Err(Error::new(
+                "In {times} operator, times should be greater than zero"
+            ))
         );
     }
 }

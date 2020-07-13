@@ -6,6 +6,12 @@ pub struct Pos {
     pub col: usize,
 }
 
+impl Pos {
+    pub fn add(&self, right: &Pos) -> Pos {
+        Pos { line: self.line + right.line, col: self.col + right.col }
+    }
+}
+
 #[derive(PartialEq, Clone, Debug)]
 pub struct Token {
     pub start: Pos,
@@ -35,6 +41,7 @@ pub enum TokenType {
     For,
     If,
     Else,
+    Switch,
     // Grouping
     LParen,
     RParen,

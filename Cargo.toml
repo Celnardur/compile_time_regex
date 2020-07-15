@@ -1,6 +1,10 @@
-[workspace]
+[package]
+name = "lime_lex"
+version = "0.1.0"
+authors = ["Aaron Dorrance <celnardur@protonmail.com>"]
+edition = "2018"
 
-members = [
-    "quick_bison",
-    "quicklime",
-]
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+rand = "0.7.3"
